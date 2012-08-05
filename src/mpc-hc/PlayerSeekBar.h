@@ -43,6 +43,7 @@ private:
     UINT_PTR m_tooltipTimer;
 
     void MoveThumb(CPoint point);
+    __int64 CalculatePosition(REFERENCE_TIME rt);
     __int64 CalculatePosition(CPoint point);
     void SetPosInternal(__int64 pos);
 
@@ -50,7 +51,6 @@ private:
 
     CRect GetChannelRect() const;
     CRect GetThumbRect() const;
-    CRect GetInnerThumbRect() const;
 
 public:
     CPlayerSeekBar();
