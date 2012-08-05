@@ -208,7 +208,7 @@ void CVMROSD::DrawRect(CRect* rect, CBrush* pBrush, CPen* pPen)
         m_MemDC.SelectStockObject(HOLLOW_BRUSH);
     }
 
-    m_MemDC.Rectangle(rect);
+    m_MemDC.RoundRect(rect, CPoint(15,15));
 }
 
 void CVMROSD::DrawSlider(CRect* rect, __int64 llMin, __int64 llMax, __int64 llPos)
