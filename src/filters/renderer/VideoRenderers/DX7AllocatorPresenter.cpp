@@ -213,35 +213,18 @@ HRESULT CDX7AllocatorPresenter::CreateDevice()
     CSize size;
     switch (GetRenderersSettings().nSPCMaxRes) {
         case 0:
-        default:
             size = m_ScreenSize;
+            size += size;
             break;
         case 1:
-            size.SetSize(1024, 768);
+            size = m_ScreenSize;
             break;
         case 2:
-            size.SetSize(800, 600);
+        default:
+            size.SetSize(int(m_ScreenSize.cx * 0.75), int(m_ScreenSize.cy * 0.75));
             break;
         case 3:
-            size.SetSize(640, 480);
-            break;
-        case 4:
-            size.SetSize(512, 384);
-            break;
-        case 5:
-            size.SetSize(384, 288);
-            break;
-        case 6:
-            size.SetSize(2560, 1600);
-            break;
-        case 7:
-            size.SetSize(1920, 1080);
-            break;
-        case 8:
-            size.SetSize(1320, 900);
-            break;
-        case 9:
-            size.SetSize(1280, 720);
+            size.SetSize(int(m_ScreenSize.cx * 0.5), int(m_ScreenSize.cy * 0.5));
             break;
     }
 
