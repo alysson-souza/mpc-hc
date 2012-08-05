@@ -3047,11 +3047,7 @@ void CMainFrame::OnInitMenu(CMenu* pMenu)
     mii.cbSize = sizeof(mii);
 
     for (UINT i = 0; i < uiMenuCount; ++i) {
-#ifdef _DEBUG
-        CString str;
-        pMenu->GetMenuString(i, str, MF_BYPOSITION);
-        str.Remove('&');
-#endif
+
         UINT itemID = pMenu->GetMenuItemID(i);
         if (itemID == 0xFFFFFFFF) {
             mii.fMask = MIIM_ID;
@@ -3064,10 +3060,7 @@ void CMainFrame::OnInitMenu(CMenu* pMenu)
         if (itemID == ID_FAVORITES) {
             SetupFavoritesSubMenu();
             pSubMenu = &m_favorites;
-        }/*else if (itemID == ID_RECENT_FILES) {
-            SetupRecentFilesSubMenu();
-            pSubMenu = &m_recentfiles;
-        }*/
+        }
 
         if (pSubMenu) {
             mii.fMask = MIIM_STATE | MIIM_SUBMENU | MIIM_ID;
@@ -3093,32 +3086,29 @@ void CMainFrame::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
     mii.cbSize = sizeof(mii);
 
     for (UINT i = 0; i < uiMenuCount; ++i) {
-#ifdef _DEBUG
-        CString str;
-        pPopupMenu->GetMenuString(i, str, MF_BYPOSITION);
-        str.Remove('&');
-#endif
+
         UINT firstSubItemID = 0;
         CMenu* sm = pPopupMenu->GetSubMenu(i);
         if (sm) {
             firstSubItemID = sm->GetMenuItemID(0);
         }
 
-        if (firstSubItemID == ID_NAVIGATE_SKIPBACK) { // is "Navigate" submenu {
-            UINT fState = (m_iMediaLoadState == MLS_LOADED
-                           && (1/*GetPlaybackMode() == PM_DVD *//*|| (GetPlaybackMode() == PM_FILE && m_PlayList.GetCount() > 0)*/))
-                          ? MF_ENABLED
-                          : (MF_DISABLED | MF_GRAYED);
+        // disable submenus here
+        // first menus that are only shown if there is a video loaded
+        if (firstSubItemID ==  ID_VIEW_PRESETS_MINIMAL      // "Presets" submenu
+                || firstSubItemID == ID_VIEW_ZOOM_50            // "Zoom" submenu
+                || firstSubItemID == ID_VIEW_VF_HALF            // "Video Frame" submenu
+                || firstSubItemID == ID_ASPECTRATIO_SOURCE      // "Override Aspect Ratio" submenu
+                || firstSubItemID == ID_VIEW_INCSIZE) {         // "Pan&Scan" submenu
+            UINT fState = (m_iMediaLoadState == MLS_LOADED && !m_fAudioOnly)
+                          ? MF_ENABLED : (MF_DISABLED | MF_GRAYED);
             pPopupMenu->EnableMenuItem(i, MF_BYPOSITION | fState);
             continue;
         }
-        if (firstSubItemID == ID_VIEW_VF_HALF               // is "Video Frame" submenu
-                || firstSubItemID == ID_VIEW_INCSIZE        // is "Pan&Scan" submenu
-                || firstSubItemID == ID_ASPECTRATIO_SOURCE  // is "Override Aspect Ratio" submenu
-                || firstSubItemID == ID_VIEW_ZOOM_50) {     // is "Zoom" submenu
-            UINT fState = (m_iMediaLoadState == MLS_LOADED && !m_fAudioOnly)
-                          ? MF_ENABLED
-                          : (MF_DISABLED | MF_GRAYED);
+        // second menus that are only shown if there is something loaded
+        if (firstSubItemID == ID_NAVIGATE_SKIPBACK) {       // "Navigate" top-level menu
+            UINT fState = (m_iMediaLoadState == MLS_LOADED)
+                          ? MF_ENABLED : (MF_DISABLED | MF_GRAYED);
             pPopupMenu->EnableMenuItem(i, MF_BYPOSITION | fState);
             continue;
         }
@@ -3129,8 +3119,8 @@ void CMainFrame::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
             pPopupMenu->GetMenuItemInfo(i, &mii, TRUE);
             itemID = mii.wID;
         }
-        CMenu* pSubMenu = NULL;
 
+        CMenu* pSubMenu = NULL;
         if (itemID == ID_FILE_OPENDISC32774) {
             SetupOpenCDSubMenu();
             pSubMenu = &m_opencds;
@@ -3188,21 +3178,22 @@ void CMainFrame::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
             mii.hSubMenu = pSubMenu->m_hMenu;
             mii.fState = (pSubMenu->GetMenuItemCount() > 0 ? MF_ENABLED : (MF_DISABLED | MF_GRAYED));
             pPopupMenu->SetMenuItemInfo(i, &mii, TRUE);
-            //continue;
         }
-    }
-
-    uiMenuCount = pPopupMenu->GetMenuItemCount();
-    if (uiMenuCount == -1) {
-        return;
     }
 
     for (UINT i = 0; i < uiMenuCount; ++i) {
         UINT nID = pPopupMenu->GetMenuItemID(i);
+        // skip separators and dynamic menus
         if (nID == ID_SEPARATOR || nID == -1
                 || nID >= ID_FAVORITES_FILE_START && nID <= ID_FAVORITES_FILE_END
                 || nID >= ID_RECENT_FILE_START && nID <= ID_RECENT_FILE_END
-                || nID >= ID_NAVIGATE_CHAP_SUBITEM_START && nID <= ID_NAVIGATE_CHAP_SUBITEM_END) {
+                || nID >= ID_NAVIGATE_CHAP_SUBITEM_START && nID <= ID_NAVIGATE_CHAP_SUBITEM_END
+                || nID >= ID_NAVIGATE_ANGLE_SUBITEM_START && nID <= ID_NAVIGATE_ANGLE_SUBITEM_END
+                || nID >= ID_NAVIGATE_AUDIO_SUBITEM_START && nID <= ID_NAVIGATE_AUDIO_SUBITEM_END
+                || nID >= ID_NAVIGATE_SUBP_SUBITEM_START && nID <= ID_NAVIGATE_SUBP_SUBITEM_END
+                || nID >= ID_LANGUAGE_ENGLISH && nID <= ID_LANGUAGE_LAST
+                || nID >= ID_FILTERS_SUBITEM_START && nID <= ID_FILTERS_SUBITEM_END
+                || nID >= ID_FILTERSTREAMS_SUBITEM_START && nID <= ID_FILTERSTREAMS_SUBITEM_END) {
             continue;
         }
 
@@ -3219,10 +3210,6 @@ void CMainFrame::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
         }
         str += _T("\t") + key;
 
-        // BUG(?): this disables menu item update ui calls for some reason...
-        //pPopupMenu->ModifyMenu(i, MF_BYPOSITION|MF_STRING, nID, str);
-
-        // this works fine
         MENUITEMINFO mii;
         mii.cbSize = sizeof(mii);
         mii.fMask = MIIM_STRING;
@@ -3231,42 +3218,37 @@ void CMainFrame::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
 
     }
 
-    uiMenuCount = pPopupMenu->GetMenuItemCount();
-    if (uiMenuCount == -1) {
-        return;
-    }
+    // limit to the View menu
+    // 20 = menubar | 9 = context menu | There MUST be a better way to do this
+    if (nIndex == 20 || nIndex == 9) {
+        // clear the PnS Presets submenu
+        bool fPnSPresets = false;
+        for (UINT i = 0; i < uiMenuCount; ++i) {
+            UINT nID = pPopupMenu->GetMenuItemID(i);
+            if (nID >= ID_PANNSCAN_PRESETS_START && nID < ID_PANNSCAN_PRESETS_END) {
+                do {
+                    nID = pPopupMenu->GetMenuItemID(i);
+                    pPopupMenu->DeleteMenu(i, MF_BYPOSITION);
+                    uiMenuCount--;
+                } while (i < uiMenuCount && nID >= ID_PANNSCAN_PRESETS_START && nID < ID_PANNSCAN_PRESETS_END);
 
-    bool fPnSPresets = false;
-
-    for (UINT i = 0; i < uiMenuCount; ++i) {
-        UINT nID = pPopupMenu->GetMenuItemID(i);
-
-        if (nID >= ID_PANNSCAN_PRESETS_START && nID < ID_PANNSCAN_PRESETS_END) {
-            do {
                 nID = pPopupMenu->GetMenuItemID(i);
-                pPopupMenu->DeleteMenu(i, MF_BYPOSITION);
-                uiMenuCount--;
-            } while (i < uiMenuCount && nID >= ID_PANNSCAN_PRESETS_START && nID < ID_PANNSCAN_PRESETS_END);
+            }
 
-            nID = pPopupMenu->GetMenuItemID(i);
+            if (nID == ID_VIEW_RESET) {
+                fPnSPresets = true;
+            }
         }
-
-        if (nID == ID_VIEW_RESET) {
-            fPnSPresets = true;
-        }
-    }
-
-    if (fPnSPresets) {
-        const CAppSettings& s = AfxGetAppSettings();
-        INT_PTR i = 0, j = s.m_pnspresets.GetCount();
-        for (; i < j; i++) {
-            int k = 0;
-            CString label = s.m_pnspresets[i].Tokenize(_T(","), k);
-            pPopupMenu->InsertMenu(ID_VIEW_RESET, MF_BYCOMMAND, ID_PANNSCAN_PRESETS_START + i, label);
-        }
-        //if (j > 0)
-        {
-            pPopupMenu->InsertMenu(ID_VIEW_RESET, MF_BYCOMMAND, ID_PANNSCAN_PRESETS_START + i, ResStr(IDS_PANSCAN_EDIT));
+        // reconstruct the PnS Presets submenu
+        if (fPnSPresets) {
+            const CAppSettings& s = AfxGetAppSettings();
+            int j = s.m_pnspresets.GetCount();
+            for (int i = 0; i < j; ++i) {
+                int k = 0;
+                CString label = s.m_pnspresets[i].Tokenize(_T(","), k);
+                pPopupMenu->InsertMenu(ID_VIEW_RESET, MF_BYCOMMAND, ID_PANNSCAN_PRESETS_START + i, label);
+            }
+            pPopupMenu->InsertMenu(ID_VIEW_RESET, MF_BYCOMMAND, ID_PANNSCAN_PRESETS_START + j - 1, ResStr(IDS_PANSCAN_EDIT));
             pPopupMenu->InsertMenu(ID_VIEW_RESET, MF_BYCOMMAND | MF_SEPARATOR);
         }
     }
